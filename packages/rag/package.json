@@ -1,0 +1,20 @@
+{
+  "name": "@agentlab/rag",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentlab/database": "*",
+    "@agentlab/llm": "*",
+    "@agentlab/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
