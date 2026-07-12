@@ -1,0 +1,50 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "concurrency": "100%",
+  "globalDependencies": ["**/.env.*local"],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "JWT_SECRET",
+    "OPENAI_API_KEY",
+    "TOGETHER_API_KEY",
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "KIMI_API_KEY",
+    "LLM_PROVIDER",
+    "OLLAMA_BASE_URL",
+    "OLLAMA_MODEL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:push": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    }
+  }
+}

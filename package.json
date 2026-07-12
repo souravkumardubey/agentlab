@@ -1,0 +1,44 @@
+{
+  "name": "agentlab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Agent Orchestration Platform - Build, deploy, and orchestrate AI agents with RAG, workflows, and multi-agent collaboration",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:api": "turbo dev --filter=@agentlab/api",
+    "dev:web": "turbo dev --filter=@agentlab/web",
+    "dev:worker": "turbo dev --filter=@agentlab/worker",
+    "dev:ws": "turbo dev --filter=@agentlab/ws",
+    "build": "turbo build",
+    "build:packages": "turbo build --filter='./packages/*'",
+    "build:apps": "turbo build --filter='./apps/*'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "turbo lint",
+    "format": "prettier --write .",
+    "clean": "turbo clean && rm -rf node_modules",
+    "db:generate": "turbo db:generate --filter=@agentlab/database",
+    "db:push": "turbo db:push --filter=@agentlab/database",
+    "db:migrate": "turbo db:migrate --filter=@agentlab/database",
+    "db:seed": "turbo db:seed --filter=@agentlab/database",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "prettier": "^3.2.0",
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.2.0"
+}
