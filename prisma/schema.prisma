@@ -1,0 +1,241 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== Enums ====================
+
+enum UserRole {
+  ADMIN
+  USER
+  VIEWER
+}
+
+enum AgentType {
+  ROUTER
+  RAG
+  CHAT
+  WORKFLOW
+  CUSTOM
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  WAITING_APPROVAL
+  CANCELLED
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ==================== Models ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          UserRole  @default(USER)
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  ownedWorkspaces Workspace[]     @relation("WorkspaceOwner")
+  workspaces      WorkspaceUser[]
+  apiKeys         ApiKey[]
+
+  @@map("users")
+}
+
+model ApiKey {
+  id            String    @id @default(cuid())
+  name          String
+  key           String    @unique
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastUsedAt    DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@map("api_keys")
+}
+
+model Workspace {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  ownerId       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  owner         User?     @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  users         WorkspaceUser[]
+  agents        Agent[]
+  documents     Document[]
+  workflows     Workflow[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceUser {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId        String
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_users")
+}
+
+model Agent {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  type          AgentType @default(CHAT)
+  model         String    @default("gpt-4o-mini")
+  systemPrompt  String?
+  config        Json      @default("{}")
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  conversations Conversation[]
+  toolCalls     ToolCall[]
+
+  @@map("agents")
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  title         String?
+  agentId       String
+  agent         Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  messages      Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  role            MessageRole
+  content         String
+  tokenCount      Int?
+  model           String?
+  latencyMs       Int?
+  metadata        Json?
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now())
+
+  toolCalls       ToolCall[]
+
+  @@map("messages")
+}
+
+model ToolCall {
+  id            String    @id @default(cuid())
+  name          String
+  arguments     Json
+  result        Json?
+  status        String    @default("pending")
+  agentId       String
+  agent         Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messageId     String?
+  message       Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  @@map("tool_calls")
+}
+
+model Document {
+  id            String        @id @default(cuid())
+  name          String
+  mimeType      String?
+  size          Int?
+  url           String?
+  content       String?
+  status        DocumentStatus @default(PENDING)
+  chunkCount    Int           @default(0)
+  metadata      Json?
+  workspaceId   String
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  chunks        Chunk[]
+
+  @@map("documents")
+}
+
+model Chunk {
+  id            String    @id @default(cuid())
+  content       String
+  embedding     Unsupported("vector(768)")
+  index         Int
+  tokenCount    Int?
+  metadata      Json?
+  documentId    String
+  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@map("chunks")
+}
+
+model Workflow {
+  id            String        @id @default(cuid())
+  name          String
+  description   String?
+  definition    Json
+  isActive      Boolean       @default(true)
+  workspaceId   String
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  runs          WorkflowRun[]
+
+  @@map("workflows")
+}
+
+model WorkflowRun {
+  id            String      @id @default(cuid())
+  status        RunStatus   @default(PENDING)
+  input         Json?
+  output        Json?
+  state         Json?
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  workflowId    String
+  workflow      Workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@map("workflow_runs")
+}
