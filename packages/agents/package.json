@@ -1,0 +1,23 @@
+{
+  "name": "@agentlab/agents",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentlab/database": "*",
+    "@agentlab/llm": "*",
+    "@agentlab/rag": "*",
+    "@agentlab/shared": "*",
+    "@langchain/core": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
