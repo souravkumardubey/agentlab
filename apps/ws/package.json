@@ -1,0 +1,23 @@
+{
+  "name": "@agentlab/ws",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentlab/agents": "*",
+    "@agentlab/auth": "*",
+    "@agentlab/database": "*",
+    "@agentlab/shared": "*",
+    "socket.io": "^4.7.5",
+    "tsx": "^4.16.0"
+  },
+  "devDependencies": {
+    "@types/socket.io": "^3.0.2",
+    "typescript": "^5.5.0"
+  }
+}
