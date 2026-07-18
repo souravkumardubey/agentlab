@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { Markdown } from '@/components/markdown';
 import { api } from '@/lib/api';
 import { Bot } from 'lucide-react';
 
@@ -476,7 +477,11 @@ export default function AgentChatPage() {
                           }
                     }
                   >
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                    {message.role === 'USER' ? (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
+                    ) : (
+                      <Markdown className="text-sm leading-relaxed">{message.content}</Markdown>
+                    )}
                     {message.metadata && (
                       <div
                         className="mt-2 pt-2 text-xs"
