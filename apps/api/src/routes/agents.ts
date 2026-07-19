@@ -14,6 +14,7 @@ const createAgentSchema = z.object({
   type: z.enum(['CHAT', 'RAG', 'ROUTER', 'WORKFLOW', 'CUSTOM']).default('CHAT'),
   model: z.string().default('gpt-4o-mini'),
   systemPrompt: z.string().optional(),
+  tools: z.array(z.string()).optional(),
   config: z.record(z.unknown()).optional(),
   workspaceId: z.string(),
 });
@@ -55,7 +56,10 @@ router.post('/', async (req, res) => {
       type: body.type,
       model: body.model,
       systemPrompt: body.systemPrompt,
-      config: (body.config ?? {}) as never,
+      config: {
+        ...(body.config ?? {}),
+        tools: body.tools || [],
+      } as never,
       workspaceId: body.workspaceId,
     },
   });
@@ -80,18 +84,30 @@ router.get('/:id', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const agent = await prisma.agent.update({
+  const existing = await prisma.agent.findFirst({
     where: {
       id: req.params.id,
       workspace: { users: { some: { userId: req.user!.id } } },
     },
+  });
+
+  if (!existing) {
+    return res.status(404).json({ success: false, error: 'Agent not found' });
+  }
+
+  const agent = await prisma.agent.update({
+    where: { id: req.params.id },
     data: {
       name: req.body.name,
       description: req.body.description,
       type: req.body.type,
       model: req.body.model,
       systemPrompt: req.body.systemPrompt,
-      config: req.body.config,
+      config: {
+        ...(existing.config as Record<string, unknown> || {}),
+        ...(req.body.config || {}),
+        ...(req.body.tools !== undefined ? { tools: req.body.tools } : {}),
+      },
     },
   });
 
@@ -224,50 +240,29 @@ router.post('/:id/chat/stream', async (req, res) => {
   res.flushHeaders();
 
   try {
-    const { createFallbackProvider, getDefaultProvider } = await import('@agentlab/llm');
-    const { prisma: db } = await import('@agentlab/database');
+    // Run agent (handles tool calling internally)
+    const responses = await runAgent(req.params.id, conversation.id, message);
 
-    const agent = await db.agent.findUniqueOrThrow({
-      where: { id: req.params.id },
-    });
+    // Stream the final response(s)
+    for (const response of responses) {
+      // Save each response to conversation
+      await prisma.message.create({
+        data: {
+          role: 'ASSISTANT',
+          content: response.content,
+          metadata: response.metadata as never,
+          conversationId: conversation.id,
+        },
+      });
 
-    const llm = (() => {
-      try {
-        return createFallbackProvider();
-      } catch {
-        return getDefaultProvider();
+      // Stream the content
+      const content = response.content;
+      const chunkSize = 20; // Characters per chunk
+      for (let i = 0; i < content.length; i += chunkSize) {
+        const chunk = content.slice(i, i + chunkSize);
+        res.write(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
       }
-    })();
-    const systemMessage = {
-      role: 'system' as const,
-      content: agent.systemPrompt || 'You are a helpful AI assistant.',
-    };
-
-    // Fetch conversation history for multi-turn context
-    const historyMessages = await db.message.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    const contextMessages = historyMessages.map((m) => ({
-      role: m.role === 'USER' ? 'user' as const : 'assistant' as const,
-      content: m.content,
-    }));
-
-    let fullContent = '';
-    for await (const chunk of llm.chatStream([systemMessage, ...contextMessages], { model: agent.model })) {
-      fullContent += chunk;
-      res.write(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
     }
-
-    // Save complete response
-    await db.message.create({
-      data: {
-        role: 'ASSISTANT',
-        content: fullContent,
-        conversationId: conversation.id,
-      },
-    });
 
     res.write(`data: ${JSON.stringify({ chunk: '', done: true, conversationId: conversation.id })}\n\n`);
   } catch (error: unknown) {

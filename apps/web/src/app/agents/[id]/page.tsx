@@ -5,14 +5,24 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Markdown } from '@/components/markdown';
+import { ToolCallsDisplay } from '@/components/chat/tool-calls';
 import { api } from '@/lib/api';
 import { Bot } from 'lucide-react';
+
+interface ToolCall {
+  name: string;
+  arguments: Record<string, unknown>;
+  result?: string;
+  status?: 'success' | 'error' | 'running';
+  durationMs?: number;
+}
 
 interface Message {
   id?: string;
   role: string;
   content: string;
   metadata?: Record<string, unknown>;
+  toolCalls?: ToolCall[];
   createdAt?: string;
 }
 
@@ -480,7 +490,12 @@ export default function AgentChatPage() {
                     {message.role === 'USER' ? (
                       <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
                     ) : (
-                      <Markdown className="text-sm leading-relaxed">{message.content}</Markdown>
+                      <>
+                        <Markdown className="text-sm leading-relaxed">{message.content}</Markdown>
+                        {message.toolCalls && message.toolCalls.length > 0 && (
+                          <ToolCallsDisplay toolCalls={message.toolCalls} />
+                        )}
+                      </>
                     )}
                     {message.metadata && (
                       <div

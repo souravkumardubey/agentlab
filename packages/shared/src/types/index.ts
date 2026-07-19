@@ -186,11 +186,35 @@ export interface WorkflowRunResult {
 
 // ==================== LLM Types ====================
 
+export interface LLMToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface LLMToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: Record<string, {
+        type: string;
+        description: string;
+        enum?: string[];
+      }>;
+      required: string[];
+    };
+  };
+}
+
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   name?: string;
   tool_call_id?: string;
+  tool_calls?: LLMToolCall[];
 }
 
 export interface LLMOptions {
@@ -198,11 +222,14 @@ export interface LLMOptions {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+  tools?: LLMToolDefinition[];
+  tool_choice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
 }
 
 export interface LLMResponse {
   content: string;
   model: string;
+  toolCalls?: LLMToolCall[];
   usage: {
     promptTokens: number;
     completionTokens: number;

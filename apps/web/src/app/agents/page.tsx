@@ -53,7 +53,15 @@ export default function AgentsPage() {
     type: 'CHAT',
     model: 'gemini-2.0-flash',
     systemPrompt: '',
+    tools: [] as string[],
   });
+
+  const availableTools = [
+    { name: 'calculator', label: 'Calculator', description: 'Evaluate mathematical expressions' },
+    { name: 'get_current_datetime', label: 'Date & Time', description: 'Get current date and time' },
+    { name: 'http_request', label: 'HTTP Request', description: 'Make API calls to external services' },
+    { name: 'web_search', label: 'Web Search', description: 'Search the web (requires API key)' },
+  ];
 
   useEffect(() => {
     if (!hasHydrated) return;
@@ -97,7 +105,7 @@ export default function AgentsPage() {
 
       toast.success('Agent created successfully');
       setShowCreateModal(false);
-      setForm({ name: '', description: '', type: 'CHAT', model: 'gemini-2.0-flash', systemPrompt: '' });
+      setForm({ name: '', description: '', type: 'CHAT', model: 'gemini-2.0-flash', systemPrompt: '', tools: [] });
       fetchAgents();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create agent');
@@ -108,12 +116,14 @@ export default function AgentsPage() {
 
   const openEditModal = (agent: Agent) => {
     setEditingAgent(agent);
+    const config = (agent as any).config || {};
     setForm({
       name: agent.name,
       description: agent.description || '',
       type: agent.type,
       model: agent.model,
       systemPrompt: (agent as any).systemPrompt || '',
+      tools: config.tools || [],
     });
     setShowEditModal(true);
   };
@@ -131,12 +141,13 @@ export default function AgentsPage() {
         type: form.type,
         model: form.model,
         systemPrompt: form.systemPrompt,
+        tools: form.tools,
       }, token || undefined);
 
       toast.success('Agent updated successfully');
       setShowEditModal(false);
       setEditingAgent(null);
-      setForm({ name: '', description: '', type: 'CHAT', model: 'gemini-2.0-flash', systemPrompt: '' });
+      setForm({ name: '', description: '', type: 'CHAT', model: 'gemini-2.0-flash', systemPrompt: '', tools: [] });
       fetchAgents();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update agent');
@@ -348,6 +359,47 @@ export default function AgentsPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Tools
+                  <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(optional)</span>
+                </label>
+                <div className="space-y-2">
+                  {availableTools.map((tool) => (
+                    <label
+                      key={tool.name}
+                      className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors"
+                      style={{
+                        background: form.tools.includes(tool.name) ? 'var(--brand-softer)' : 'var(--surface-inset)',
+                        border: `1px solid ${form.tools.includes(tool.name) ? 'var(--brand-soft)' : 'var(--border-subtle)'}`,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.tools.includes(tool.name)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setForm({ ...form, tools: [...form.tools, tool.name] });
+                          } else {
+                            setForm({ ...form, tools: form.tools.filter((t) => t !== tool.name) });
+                          }
+                        }}
+                        className="mt-0.5"
+                        style={{ accentColor: 'var(--brand-primary)' }}
+                      />
+                      <div>
+                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {tool.label}
+                        </span>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {tool.description}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div className="modal-footer">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-ghost">
                   Cancel
@@ -436,6 +488,47 @@ export default function AgentsPage() {
                   rows={3}
                   placeholder="Optional instructions for the agent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Tools
+                  <span className="ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(optional)</span>
+                </label>
+                <div className="space-y-2">
+                  {availableTools.map((tool) => (
+                    <label
+                      key={tool.name}
+                      className="flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors"
+                      style={{
+                        background: form.tools.includes(tool.name) ? 'var(--brand-softer)' : 'var(--surface-inset)',
+                        border: `1px solid ${form.tools.includes(tool.name) ? 'var(--brand-soft)' : 'var(--border-subtle)'}`,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.tools.includes(tool.name)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setForm({ ...form, tools: [...form.tools, tool.name] });
+                          } else {
+                            setForm({ ...form, tools: form.tools.filter((t) => t !== tool.name) });
+                          }
+                        }}
+                        className="mt-0.5"
+                        style={{ accentColor: 'var(--brand-primary)' }}
+                      />
+                      <div>
+                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {tool.label}
+                        </span>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {tool.description}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="modal-footer">

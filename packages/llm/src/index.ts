@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import type { LLMMessage, LLMOptions, LLMResponse, EmbeddingOptions } from '@agentlab/shared';
+import type { LLMMessage, LLMOptions, LLMResponse, LLMToolCall, LLMToolDefinition, EmbeddingOptions } from '@agentlab/shared';
 
 export interface LLMProvider {
   chat(messages: LLMMessage[], options?: LLMOptions): Promise<LLMResponse>;
@@ -23,17 +23,52 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async chat(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
-    const response = await this.client.chat.completions.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const params: any = {
       model: options.model || this.defaultModel,
-      messages: messages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
+      messages: messages.map((m) => {
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          return {
+            role: 'assistant',
+            content: m.content || null,
+            tool_calls: m.tool_calls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+            })),
+          };
+        }
+        if (m.role === 'tool') {
+          return { role: 'tool', content: m.content, tool_call_id: m.tool_call_id };
+        }
+        return { role: m.role as 'system' | 'user' | 'assistant', content: m.content };
+      }),
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 4096,
-    });
+    };
 
+    if (options.tools && options.tools.length > 0) {
+      params.tools = options.tools;
+      params.tool_choice = options.tool_choice || 'auto';
+    }
+
+    const response = await this.client.chat.completions.create(params);
     const choice = response.choices[0];
+    const message = choice.message;
+
+    let toolCalls: LLMToolCall[] | undefined;
+    if (message?.tool_calls && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls.map((tc) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: JSON.parse(tc.function.arguments || '{}'),
+      }));
+    }
+
     return {
-      content: choice.message?.content || '',
+      content: message?.content || '',
       model: response.model,
+      toolCalls,
       usage: {
         promptTokens: response.usage?.prompt_tokens || 0,
         completionTokens: response.usage?.completion_tokens || 0,
@@ -88,17 +123,52 @@ export class TogetherProvider implements LLMProvider {
   }
 
   async chat(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
-    const response = await this.client.chat.completions.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const params: any = {
       model: options.model || this.defaultModel,
-      messages: messages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
+      messages: messages.map((m) => {
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          return {
+            role: 'assistant',
+            content: m.content || null,
+            tool_calls: m.tool_calls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+            })),
+          };
+        }
+        if (m.role === 'tool') {
+          return { role: 'tool', content: m.content, tool_call_id: m.tool_call_id };
+        }
+        return { role: m.role as 'system' | 'user' | 'assistant', content: m.content };
+      }),
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 4096,
-    });
+    };
 
+    if (options.tools && options.tools.length > 0) {
+      params.tools = options.tools;
+      params.tool_choice = options.tool_choice || 'auto';
+    }
+
+    const response = await this.client.chat.completions.create(params);
     const choice = response.choices[0];
+    const message = choice.message;
+
+    let toolCalls: LLMToolCall[] | undefined;
+    if (message?.tool_calls && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls.map((tc) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: JSON.parse(tc.function.arguments || '{}'),
+      }));
+    }
+
     return {
-      content: choice.message?.content || '',
+      content: message?.content || '',
       model: response.model,
+      toolCalls,
       usage: {
         promptTokens: response.usage?.prompt_tokens || 0,
         completionTokens: response.usage?.completion_tokens || 0,
@@ -157,17 +227,52 @@ export class GroqProvider implements LLMProvider {
   }
 
   async chat(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
-    const response = await this.client.chat.completions.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const params: any = {
       model: options.model || this.defaultModel,
-      messages: messages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
+      messages: messages.map((m) => {
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          return {
+            role: 'assistant',
+            content: m.content || null,
+            tool_calls: m.tool_calls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+            })),
+          };
+        }
+        if (m.role === 'tool') {
+          return { role: 'tool', content: m.content, tool_call_id: m.tool_call_id };
+        }
+        return { role: m.role as 'system' | 'user' | 'assistant', content: m.content };
+      }),
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 4096,
-    });
+    };
 
+    if (options.tools && options.tools.length > 0) {
+      params.tools = options.tools;
+      params.tool_choice = options.tool_choice || 'auto';
+    }
+
+    const response = await this.client.chat.completions.create(params);
     const choice = response.choices[0];
+    const message = choice.message;
+
+    let toolCalls: LLMToolCall[] | undefined;
+    if (message?.tool_calls && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls.map((tc) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: JSON.parse(tc.function.arguments || '{}'),
+      }));
+    }
+
     return {
-      content: choice.message?.content || '',
+      content: message?.content || '',
       model: response.model,
+      toolCalls,
       usage: {
         promptTokens: response.usage?.prompt_tokens || 0,
         completionTokens: response.usage?.completion_tokens || 0,
@@ -229,18 +334,49 @@ export class OllamaProvider implements LLMProvider {
 
   async chat(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
     const model = options.model || this.defaultModel;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body: any = {
+      model,
+      messages: messages.map((m) => {
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          return {
+            role: 'assistant',
+            content: m.content || '',
+            tool_calls: m.tool_calls.map((tc) => ({
+              type: 'function',
+              function: { name: tc.name, arguments: tc.arguments },
+            })),
+          };
+        }
+        if (m.role === 'tool') {
+          return { role: 'tool', content: m.content };
+        }
+        return { role: m.role.toLowerCase(), content: m.content };
+      }),
+      stream: false,
+      options: {
+        temperature: options.temperature ?? 0.7,
+        num_predict: options.maxTokens ?? 4096,
+      },
+    };
+
+    // Add tools if provided
+    if (options.tools && options.tools.length > 0) {
+      body.tools = options.tools.map((t) => ({
+        type: 'function',
+        function: {
+          name: t.function.name,
+          description: t.function.description,
+          parameters: t.function.parameters,
+        },
+      }));
+    }
+
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages: messages.map((m) => ({ role: m.role.toLowerCase(), content: m.content })),
-        stream: false,
-        options: {
-          temperature: options.temperature ?? 0.7,
-          num_predict: options.maxTokens ?? 4096,
-        },
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -249,9 +385,21 @@ export class OllamaProvider implements LLMProvider {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await response.json();
+
+    // Parse tool calls from Ollama response
+    let toolCalls: LLMToolCall[] | undefined;
+    if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
+      toolCalls = data.message.tool_calls.map((tc: any, index: number) => ({
+        id: `call_${model}_${index}`,
+        name: tc.function?.name || '',
+        arguments: tc.function?.arguments || {},
+      }));
+    }
+
     return {
       content: data.message?.content || '',
       model,
+      toolCalls,
       usage: {
         promptTokens: data.prompt_eval_count || 0,
         completionTokens: data.eval_count || 0,
@@ -509,17 +657,52 @@ export class KimiProvider implements LLMProvider {
   }
 
   async chat(messages: LLMMessage[], options: LLMOptions = {}): Promise<LLMResponse> {
-    const response = await this.client.chat.completions.create({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const params: any = {
       model: options.model || this.defaultModel,
-      messages: messages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
+      messages: messages.map((m) => {
+        if (m.tool_calls && m.tool_calls.length > 0) {
+          return {
+            role: 'assistant',
+            content: m.content || null,
+            tool_calls: m.tool_calls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+            })),
+          };
+        }
+        if (m.role === 'tool') {
+          return { role: 'tool', content: m.content, tool_call_id: m.tool_call_id };
+        }
+        return { role: m.role as 'system' | 'user' | 'assistant', content: m.content };
+      }),
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 4096,
-    });
+    };
 
+    if (options.tools && options.tools.length > 0) {
+      params.tools = options.tools;
+      params.tool_choice = options.tool_choice || 'auto';
+    }
+
+    const response = await this.client.chat.completions.create(params);
     const choice = response.choices[0];
+    const message = choice.message;
+
+    let toolCalls: LLMToolCall[] | undefined;
+    if (message?.tool_calls && message.tool_calls.length > 0) {
+      toolCalls = message.tool_calls.map((tc) => ({
+        id: tc.id,
+        name: tc.function.name,
+        arguments: JSON.parse(tc.function.arguments || '{}'),
+      }));
+    }
+
     return {
-      content: choice.message?.content || '',
+      content: message?.content || '',
       model: response.model,
+      toolCalls,
       usage: {
         promptTokens: response.usage?.prompt_tokens || 0,
         completionTokens: response.usage?.completion_tokens || 0,
